@@ -1,5 +1,0 @@
-Test 1|Personal|Medium|11/01/2025|True
-Test 2|Personal|Medium|10/03/2025|False
-Python lab|Work|Low||False
-DS|Work|High|01/01/2025|True
-DA Project|Work|Medium|10/12/2025|False

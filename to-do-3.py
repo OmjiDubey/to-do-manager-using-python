@@ -8,22 +8,19 @@ ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
 
 class Task:
-    def __init__(self, title, category, priority, due_date, completed=False):
+    def __init__(self, title, category, priority, due_date, completed=False, timestamp=None):
         self.title = title
         self.category = category
         self.priority = priority
         self.due_date = due_date
         self.completed = completed
+        self.timestamp = timestamp if timestamp else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 class ToDoManager(ctk.CTk):
     def __init__(self):
         super().__init__()
         
         self.title("To-Do Manager")
-        # self.geometry("1250x900")
-        
-        # Maximize the window
-        self.after(100, lambda: self.state('zoomed'))  
         
         # Data storage
         self.tasks = []
@@ -32,6 +29,9 @@ class ToDoManager(ctk.CTk):
         # Main container
         self.create_widgets()
         self.display_tasks()
+        
+        # Maximize the window after everything is loaded
+        self.after(100, lambda: self.state('zoomed'))
         
     def create_widgets(self):
         # Header
@@ -82,15 +82,24 @@ class ToDoManager(ctk.CTk):
         sort_label = ctk.CTkLabel(filter_frame, text="Sort by:", font=ctk.CTkFont(size=14))
         sort_label.grid(row=0, column=6, padx=(40, 5), sticky="w")
         
-        self.sort_var = ctk.StringVar(value="Priority")
+        self.sort_var = ctk.StringVar(value="Recent")
+        
+        recent_btn = ctk.CTkButton(
+            filter_frame,
+            text="Recent",
+            width=100,
+            command=lambda: self.set_sort("Recent")
+        )
+        recent_btn.grid(row=0, column=7, padx=2)
         
         priority_btn = ctk.CTkButton(
             filter_frame,
             text="Priority",
             width=100,
+            fg_color="gray",
             command=lambda: self.set_sort("Priority")
         )
-        priority_btn.grid(row=0, column=7, padx=2)
+        priority_btn.grid(row=0, column=8, padx=2)
         
         date_btn = ctk.CTkButton(
             filter_frame,
@@ -99,8 +108,9 @@ class ToDoManager(ctk.CTk):
             fg_color="gray",
             command=lambda: self.set_sort("Date")
         )
-        date_btn.grid(row=0, column=8, padx=2)
+        date_btn.grid(row=0, column=9, padx=2)
         
+        self.recent_btn = recent_btn
         self.priority_btn = priority_btn
         self.date_btn = date_btn
         
@@ -136,12 +146,18 @@ class ToDoManager(ctk.CTk):
         
     def set_sort(self, sort_type):
         self.sort_var.set(sort_type)
-        if sort_type == "Priority":
+        if sort_type == "Recent":
+            self.recent_btn.configure(fg_color=["#3B8ED0", "#1F6AA5"])
+            self.priority_btn.configure(fg_color="gray")
+            self.date_btn.configure(fg_color="gray")
+        elif sort_type == "Priority":
+            self.recent_btn.configure(fg_color="gray")
             self.priority_btn.configure(fg_color=["#3B8ED0", "#1F6AA5"])
             self.date_btn.configure(fg_color="gray")
         else:
-            self.date_btn.configure(fg_color=["#3B8ED0", "#1F6AA5"])
+            self.recent_btn.configure(fg_color="gray")
             self.priority_btn.configure(fg_color="gray")
+            self.date_btn.configure(fg_color=["#3B8ED0", "#1F6AA5"])
         self.display_tasks()
         
     def display_tasks(self):
@@ -185,7 +201,10 @@ class ToDoManager(ctk.CTk):
         return filtered
     
     def sort_tasks(self, tasks):
-        if self.sort_var.get() == "Priority":
+        if self.sort_var.get() == "Recent":
+            # Sort by timestamp - newest first
+            return sorted(tasks, key=lambda t: datetime.strptime(t.timestamp, "%Y-%m-%d %H:%M:%S"), reverse=True)
+        elif self.sort_var.get() == "Priority":
             priority_order = {"High": 0, "Medium": 1, "Low": 2}
             return sorted(tasks, key=lambda t: priority_order.get(t.priority, 3))
         else:  # Date
@@ -388,8 +407,8 @@ class ToDoManager(ctk.CTk):
         try:
             with open("tasks.txt", "w") as f:
                 for task in self.tasks:
-                    # Format: title|category|priority|due_date|completed
-                    line = f"{task.title}|{task.category}|{task.priority}|{task.due_date}|{task.completed}\n"
+                    # Format: title|category|priority|due_date|completed|timestamp
+                    line = f"{task.title}|{task.category}|{task.priority}|{task.due_date}|{task.completed}|{task.timestamp}\n"
                     f.write(line)
         except Exception as e:
             print(f"Error saving tasks: {e}")
@@ -403,14 +422,15 @@ class ToDoManager(ctk.CTk):
                         line = line.strip()
                         if line:
                             parts = line.split("|")
-                            if len(parts) == 5:
-                                title, category, priority, due_date, completed = parts
+                            if len(parts) == 6:
+                                title, category, priority, due_date, completed, timestamp = parts
                                 task = Task(
                                     title,
                                     category,
                                     priority,
                                     due_date,
-                                    completed == "True"
+                                    completed == "True",
+                                    timestamp
                                 )
                                 self.tasks.append(task)
             except Exception as e:
